@@ -2,6 +2,9 @@ import os
 from dotenv import load_dotenv
 from openai import OpenAI
 import argparse
+from prompts import system_prompt
+from call_function import available_functions
+import json
 
 load_dotenv()
 api_key = os.environ.get("OPENROUTER_API_KEY")
@@ -22,8 +25,9 @@ def main():
     parser.add_argument("--temperature", type=float, default=0.7, help="Temperature for response generation")
     args = parser.parse_args()
     messages = [
-    {"role": "user", "content": args.user_prompt},
-]
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": args.user_prompt}
+    ]
     response = generate_content(client, messages, temperature=args.temperature)
     if args.verbose:
         if response.usage is not None:
@@ -33,13 +37,20 @@ def main():
         else:
             print("Token usage information is not available in the response.")
 
-    print(f"Response:\n{response.choices[0].message.content}")
+    message = response.choices[0].message
+    if message.tool_calls:
+        for tool_call in message.tool_calls:
+            function_args = json.loads(tool_call.function.arguments or "{}") # type: ignore
+            print(f"Calling function: {tool_call.function.name}({function_args})") # type: ignore
+    else:
+         print(f"Response:\n{message.content}")
 
 def generate_content(client, messages, temperature=0.7):
     response = client.chat.completions.create(
         model="openrouter/free",
         messages=messages,
-        temperature=temperature
+        temperature=temperature,
+        tools=available_functions
     )
     return response
 if __name__ == "__main__":

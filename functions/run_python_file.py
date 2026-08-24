@@ -37,3 +37,27 @@ def run_python_file(
             return output
     except Exception as e:
         return f'Error: An unexpected error occurred - {str(e)}'
+
+schema_run_python_file = {
+    "type": "function",
+    "function": {
+        "name": "run_python_file",
+        "description": "Executes a Python file in the specified directory with given arguments",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "file_path": {
+                    "type": "string",
+                    "description": "Path to the Python file to execute, relative to the working directory",
+                },
+                "args": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Arguments to pass to the Python file",
+                }
+            },
+        },
+    }
+}
