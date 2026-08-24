@@ -58,6 +58,7 @@ schema_run_python_file = {
                     "description": "Arguments to pass to the Python file",
                 }
             },
+            "required": ["file_path"]
         },
     }
 }

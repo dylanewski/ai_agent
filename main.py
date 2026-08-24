@@ -4,6 +4,7 @@ from openai import OpenAI
 import argparse
 from prompts import system_prompt
 from call_function import available_functions
+from call_function import call_function
 import json
 
 load_dotenv()
@@ -40,10 +41,13 @@ def main():
     message = response.choices[0].message
     if message.tool_calls:
         for tool_call in message.tool_calls:
-            function_args = json.loads(tool_call.function.arguments or "{}") # type: ignore
-            print(f"Calling function: {tool_call.function.name}({function_args})") # type: ignore
-    else:
-         print(f"Response:\n{message.content}")
+            result_message = call_function(tool_call, verbose=args.verbose)
+            if result_message['content'] == "":
+                raise Exception("Error: The function returned an empty response. Please check the function implementation and ensure it returns a valid response.")
+            elif args.verbose:
+                print(f"-> {result_message['content']}")
+
+
 
 def generate_content(client, messages, temperature=0.7):
     response = client.chat.completions.create(
@@ -53,5 +57,7 @@ def generate_content(client, messages, temperature=0.7):
         tools=available_functions
     )
     return response
+
+
 if __name__ == "__main__":
     main()
