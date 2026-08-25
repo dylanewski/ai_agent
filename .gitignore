@@ -13,3 +13,6 @@ wheels/
 
 # Projects
 ai_workspace/
+
+#History
+conversation_history.json

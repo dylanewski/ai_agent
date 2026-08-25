@@ -25,14 +25,18 @@ def main():
     args = parser.parse_args()
     working_dir = validate_working_dir(args.working_dir)
 
-    messages = [
-        {"role": "system", "content": system_prompt},
-    ]
+    loaded = load_messages()
+    if loaded is not None:
+        messages = loaded
+    else:
+        messages = [
+            {"role": "system", "content": system_prompt},
+        ]
 
     while True:
         user_input = input("\nYou: ")
         if user_input.lower() in ["exit", "quit"]:
-            print("Smell ya later!")
+            print(f"\nAi: Smell ya later!")
             break
         messages.append({"role": "user", "content": user_input})
 
@@ -57,11 +61,12 @@ def main():
                     if args.verbose:
                         print(f"-> {result_message['content']}")
             else:
-                print(f"-> {ai_message.content}")
+                print(f"\nAi: {ai_message.content}")
                 break  # Exit the loop if no tool calls are present in the message
             print("\n---\n")  # Print a separator between iterations
         else:
             print("Agent did not finish its response within 20 iterations. Please check for potential issues.")
+        save_messages(messages)
             
 
 def validate_working_dir(path):
@@ -85,6 +90,31 @@ def generate_content(client, messages, temperature=0.7):
     )
     return response
 
+HISTORY_FILE = "conversation_history.json"
+
+def save_messages(messages): #designed to save messages and cut the bloat
+    serializable = []
+    for m in messages:
+        if hasattr(m, "model_dump"):          
+            full = m.model_dump()
+            trimmed = {
+                "role": full["role"],
+                "content": full["content"],
+            }
+            if full.get("tool_calls"):       
+                trimmed["tool_calls"] = full["tool_calls"]
+            serializable.append(trimmed)
+        else:    
+            serializable.append(m)                             
+    with open(HISTORY_FILE, "w") as f:
+        json.dump(serializable, f, indent=2)
+
+def load_messages():
+    try:
+        with open(HISTORY_FILE, "r") as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return None 
 
 if __name__ == "__main__":
     main()
