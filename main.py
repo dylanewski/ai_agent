@@ -25,7 +25,7 @@ def main():
     args = parser.parse_args()
     working_dir = validate_working_dir(args.working_dir)
 
-    messages, old_sessions, session_start = load_and_prepare()
+    messages, old_sessions, session_start, summary = load_and_prepare(client)
     session_start_index = len(messages)  
 
     while True:
@@ -63,7 +63,7 @@ def main():
             print("Agent did not finish its response within 20 iterations. Please check for potential issues.")
 
         current_new = messages[session_start_index:]  # Get only the new messages from this session
-        save_messages(old_sessions,current_new, session_start)
+        save_messages(old_sessions,current_new, session_start, summary)  
             
 
 def validate_working_dir(path):
