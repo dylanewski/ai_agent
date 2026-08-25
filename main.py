@@ -1,4 +1,5 @@
 import os
+from pyexpat.errors import messages
 from dotenv import load_dotenv
 from openai import OpenAI
 import argparse
@@ -21,8 +22,11 @@ def main():
     parser = argparse.ArgumentParser(description="Chatbot")
     parser.add_argument("user_prompt", type=str, help="User prompt")
     parser.add_argument("--verbose", action="store_true", help="Enable verbose output")
+    parser.add_argument("--working-dir", type=str, default="./ai_workspace", help="The directory the agent is allowed to operate in")
     parser.add_argument("--temperature", type=float, default=0.7, help="Temperature for response generation")
     args = parser.parse_args()
+    working_dir = validate_working_dir(args.working_dir)
+
     messages = [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": args.user_prompt}
@@ -43,11 +47,11 @@ def main():
 
         if message.tool_calls:
             for tool_call in message.tool_calls:
-                result_message = call_function(tool_call, verbose=args.verbose)
-                messages.append(result_message)
+                result_message = call_function(tool_call, verbose=args.verbose, working_directory=working_dir)
                 if result_message['content'] == "":
-                    raise Exception("Error: The function returned an empty response. Please check the function implementation and ensure it returns a valid response.")
-                elif args.verbose:
+                    result_message['content'] = "(the function returned no output)"
+                messages.append(result_message) 
+                if args.verbose:
                     print(f"-> {result_message['content']}")
         else:
             print(f"-> {message.content}")
@@ -56,6 +60,18 @@ def main():
     else:
         print("Agent reached max iterations without a final response.")
         exit(1)
+
+def validate_working_dir(path):
+    resolved = os.path.abspath(path)          # resolve to true absolute path
+    home = os.path.expanduser("~")
+    forbidden = [os.path.abspath(os.sep), home]   # filesystem root and home dir
+
+    if resolved in forbidden:
+        print(f"Error: '{path}' resolves to a forbidden directory ({resolved}). Refusing to run.")
+        exit(1)
+
+    os.makedirs(resolved, exist_ok=True)      # create the workspace if it doesn't exist
+    return resolved
 
 def generate_content(client, messages, temperature=0.7):
     response = client.chat.completions.create(
