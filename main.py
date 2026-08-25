@@ -15,9 +15,7 @@ if api_key is None:
 client = OpenAI(
     base_url="https://openrouter.ai/api/v1",
     api_key=api_key,
-
 )
-
 
 def main():
     parser = argparse.ArgumentParser(description="Chatbot")
@@ -29,25 +27,35 @@ def main():
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": args.user_prompt}
     ]
-    response = generate_content(client, messages, temperature=args.temperature)
-    if args.verbose:
-        if response.usage is not None:
-            print(f"User prompt: {args.user_prompt}")
-            print(f"Prompt tokens: {response.usage.prompt_tokens}")
-            print(f"Response tokens: {response.usage.completion_tokens}")
+
+    for x in range(20):
+        response = generate_content(client, messages, temperature=args.temperature)
+        if args.verbose:
+            if response.usage is not None:
+                print(f"User prompt: {args.user_prompt}")
+                print(f"Prompt tokens: {response.usage.prompt_tokens}")
+                print(f"Response tokens: {response.usage.completion_tokens}")
+            else:
+                print("Token usage information is not available in the response.")
+
+        message = response.choices[0].message
+        messages.append(message)
+
+        if message.tool_calls:
+            for tool_call in message.tool_calls:
+                result_message = call_function(tool_call, verbose=args.verbose)
+                messages.append(result_message)
+                if result_message['content'] == "":
+                    raise Exception("Error: The function returned an empty response. Please check the function implementation and ensure it returns a valid response.")
+                elif args.verbose:
+                    print(f"-> {result_message['content']}")
         else:
-            print("Token usage information is not available in the response.")
-
-    message = response.choices[0].message
-    if message.tool_calls:
-        for tool_call in message.tool_calls:
-            result_message = call_function(tool_call, verbose=args.verbose)
-            if result_message['content'] == "":
-                raise Exception("Error: The function returned an empty response. Please check the function implementation and ensure it returns a valid response.")
-            elif args.verbose:
-                print(f"-> {result_message['content']}")
-
-
+            print(f"-> {message.content}")
+            break  # Exit the loop if no tool calls are present in the message
+        print("\n---\n")  # Print a separator between iterations
+    else:
+        print("Agent reached max iterations without a final response.")
+        exit(1)
 
 def generate_content(client, messages, temperature=0.7):
     response = client.chat.completions.create(
