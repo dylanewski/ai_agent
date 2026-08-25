@@ -5,7 +5,7 @@ import argparse
 from prompts import system_prompt
 from call_function import available_functions
 from call_function import call_function
-import json
+from persistance import save_messages, load_and_prepare
 
 load_dotenv()
 api_key = os.environ.get("OPENROUTER_API_KEY")
@@ -25,18 +25,13 @@ def main():
     args = parser.parse_args()
     working_dir = validate_working_dir(args.working_dir)
 
-    loaded = load_messages()
-    if loaded is not None:
-        messages = loaded
-    else:
-        messages = [
-            {"role": "system", "content": system_prompt},
-        ]
+    messages, old_sessions, session_start = load_and_prepare()
+    session_start_index = len(messages)  
 
     while True:
         user_input = input("\nYou: ")
         if user_input.lower() in ["exit", "quit"]:
-            print(f"\nAi: Smell ya later!")
+            print(f"\nAi: Smell ya later!\n")
             break
         messages.append({"role": "user", "content": user_input})
 
@@ -66,7 +61,9 @@ def main():
             print("\n---\n")  # Print a separator between iterations
         else:
             print("Agent did not finish its response within 20 iterations. Please check for potential issues.")
-        save_messages(messages)
+
+        current_new = messages[session_start_index:]  # Get only the new messages from this session
+        save_messages(old_sessions,current_new, session_start)
             
 
 def validate_working_dir(path):
@@ -89,32 +86,6 @@ def generate_content(client, messages, temperature=0.7):
         tools=available_functions
     )
     return response
-
-HISTORY_FILE = "conversation_history.json"
-
-def save_messages(messages): #designed to save messages and cut the bloat
-    serializable = []
-    for m in messages:
-        if hasattr(m, "model_dump"):          
-            full = m.model_dump()
-            trimmed = {
-                "role": full["role"],
-                "content": full["content"],
-            }
-            if full.get("tool_calls"):       
-                trimmed["tool_calls"] = full["tool_calls"]
-            serializable.append(trimmed)
-        else:    
-            serializable.append(m)                             
-    with open(HISTORY_FILE, "w") as f:
-        json.dump(serializable, f, indent=2)
-
-def load_messages():
-    try:
-        with open(HISTORY_FILE, "r") as f:
-            return json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
-        return None 
 
 if __name__ == "__main__":
     main()
