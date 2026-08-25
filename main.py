@@ -1,5 +1,4 @@
 import os
-from pyexpat.errors import messages
 from dotenv import load_dotenv
 from openai import OpenAI
 import argparse
@@ -20,7 +19,6 @@ client = OpenAI(
 
 def main():
     parser = argparse.ArgumentParser(description="Chatbot")
-    parser.add_argument("user_prompt", type=str, help="User prompt")
     parser.add_argument("--verbose", action="store_true", help="Enable verbose output")
     parser.add_argument("--working-dir", type=str, default="./ai_workspace", help="The directory the agent is allowed to operate in")
     parser.add_argument("--temperature", type=float, default=0.7, help="Temperature for response generation")
@@ -29,37 +27,42 @@ def main():
 
     messages = [
         {"role": "system", "content": system_prompt},
-        {"role": "user", "content": args.user_prompt}
     ]
 
-    for x in range(20):
-        response = generate_content(client, messages, temperature=args.temperature)
-        if args.verbose:
-            if response.usage is not None:
-                print(f"User prompt: {args.user_prompt}")
-                print(f"Prompt tokens: {response.usage.prompt_tokens}")
-                print(f"Response tokens: {response.usage.completion_tokens}")
+    while True:
+        user_input = input("\nYou: ")
+        if user_input.lower() in ["exit", "quit"]:
+            print("Smell ya later!")
+            break
+        messages.append({"role": "user", "content": user_input})
+
+        for x in range(20):  # Limit to 20 iterations to prevent infinite loops
+            response = generate_content(client, messages, temperature=args.temperature)
+            if args.verbose:
+                if response.usage is not None:
+                    print(f"Prompt tokens: {response.usage.prompt_tokens}")
+                    print(f"Response tokens: {response.usage.completion_tokens}")
+                else:
+                    print("Token usage information is not available in the response.")
+
+            ai_message = response.choices[0].message
+            messages.append(ai_message)
+
+            if ai_message.tool_calls:
+                for tool_call in ai_message.tool_calls:
+                    result_message = call_function(tool_call, verbose=args.verbose, working_directory=working_dir)
+                    if result_message['content'] == "":
+                        result_message['content'] = "(the function returned no output)"
+                    messages.append(result_message) 
+                    if args.verbose:
+                        print(f"-> {result_message['content']}")
             else:
-                print("Token usage information is not available in the response.")
-
-        message = response.choices[0].message
-        messages.append(message)
-
-        if message.tool_calls:
-            for tool_call in message.tool_calls:
-                result_message = call_function(tool_call, verbose=args.verbose, working_directory=working_dir)
-                if result_message['content'] == "":
-                    result_message['content'] = "(the function returned no output)"
-                messages.append(result_message) 
-                if args.verbose:
-                    print(f"-> {result_message['content']}")
+                print(f"-> {ai_message.content}")
+                break  # Exit the loop if no tool calls are present in the message
+            print("\n---\n")  # Print a separator between iterations
         else:
-            print(f"-> {message.content}")
-            break  # Exit the loop if no tool calls are present in the message
-        print("\n---\n")  # Print a separator between iterations
-    else:
-        print("Agent reached max iterations without a final response.")
-        exit(1)
+            print("Agent did not finish its response within 20 iterations. Please check for potential issues.")
+            
 
 def validate_working_dir(path):
     resolved = os.path.abspath(path)          # resolve to true absolute path
