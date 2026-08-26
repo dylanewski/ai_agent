@@ -1,12 +1,14 @@
 import json
+from config import MAX_CHARS, MODEL
 from datetime import datetime
 from prompts import system_prompt
 
 HISTORY_FILE = "conversation_history.json"
+COMPACT_THRESHOLD = 50
 
-def save_messages(old_sessions, current_messages, session_start, summary):
+def trim_messages(messages):
     serializable = []
-    for m in current_messages:
+    for m in messages:
         if hasattr(m, "model_dump"):
             full = m.model_dump()
             trimmed = {"role": full["role"], "content": full["content"]}
@@ -15,43 +17,26 @@ def save_messages(old_sessions, current_messages, session_start, summary):
             serializable.append(trimmed)
         else:
             serializable.append(m)
+    return serializable
 
-    current_session = {
-        "started": session_start,      
-        "messages": serializable,
-    }
-
+def save_messages(old_sessions, current_messages, session_start, summary):
+    serializable = trim_messages(current_messages)
+    current_session = {"started": session_start, "messages": serializable}
     data = {"summary": summary, "sessions": old_sessions + [current_session]}
     with open(HISTORY_FILE, "w") as f:
         json.dump(data, f, indent=2)
 
-COMPACT_THRESHOLD = 6   # compact when old sessions hold more than this many messages
-
-def load_and_prepare(client):
+def load_and_prepare():
     session_start = datetime.now().isoformat()
 
     try:
         with open(HISTORY_FILE, "r") as f:
             data = json.load(f)
         old_sessions = data.get("sessions", [])
-        summary = data.get("summary", "")       
+        summary = data.get("summary", "")
     except (FileNotFoundError, json.JSONDecodeError, KeyError):
         old_sessions = []
         summary = ""
-
-    # if old sessions have grown too large, summarize them
-    total_old_messages = sum(len(s["messages"]) for s in old_sessions)
-    if total_old_messages > COMPACT_THRESHOLD:
-        print(f"(Compacting {total_old_messages} old messages into a summary...)")
-        messages_to_summarize = []
-        for s in old_sessions:
-            messages_to_summarize.extend(s["messages"])
-        if summary:
-            messages_to_summarize.insert(0, {"role": "system", "content": f"Previous summary: {summary}"})
-        summary = summarize(client, messages_to_summarize)
-        old_sessions = []    
-        with open(HISTORY_FILE, "w") as f:
-            json.dump({"summary": summary, "sessions": old_sessions}, f, indent=2)
 
     messages = [{"role": "system", "content": system_prompt}]
 
@@ -76,16 +61,17 @@ def summarize(client, messages_to_summarize):
         if content:                          
             conversation_text += f"{role}: {content}\n"
 
-    summary_prompt = """You are summarizing a conversation between a user and an AI coding agent. Produce a concise summary that preserves:
+        summary_prompt = """You are summarizing a conversation between a user and an AI coding agent. Produce a concise summary (a few short paragraphs at most) that preserves:
 - Facts the user shared (preferences, personal details, decisions)
 - Tasks that were accomplished (files created, code written, actions taken)
-- Any ongoing context or unfinished work
-- Keep the summary concise — a few short paragraphs at most, focusing only on the most important facts and outcomes.
+- Any ongoing or unfinished work
 
-Drop the chatty back-and-forth. Focus on what would be useful to remember going forward. Write it as a compact factual summary."""
+Prioritize recent information: preserve details from later in the conversation more fully, and compress or drop older details that are no longer relevant. If a previous summary is included, integrate it into a single cohesive summary rather than appending — consolidate overlapping points and let stale details fall away.
+
+Drop the chatty back-and-forth. Focus on what would be useful to remember going forward."""
 
     response = client.chat.completions.create(
-        model="openrouter/free",
+        model= MODEL,
         messages=[
             {"role": "system", "content": summary_prompt},
             {"role": "user", "content": f"Summarize this conversation:\n\n{conversation_text}"},
@@ -93,3 +79,26 @@ Drop the chatty back-and-forth. Focus on what would be useful to remember going 
         temperature=0,      
     )
     return response.choices[0].message.content
+
+def compact_if_needed(client, old_sessions, current_new, session_start, summary):
+    current_session = {"started": session_start, "messages": trim_messages(current_new)}
+    all_sessions = old_sessions + [current_session]
+
+    total = sum(len(s["messages"]) for s in all_sessions)
+    if total <= COMPACT_THRESHOLD:
+        return all_sessions, summary     
+
+    print(f"(Compacting {total} messages into a summary...)")
+    messages_to_summarize = []
+    if summary:
+        messages_to_summarize.append({"role": "system", "content": f"Previous summary: {summary}"})
+    for s in all_sessions:
+        messages_to_summarize.extend(s["messages"])
+
+    new_summary = summarize(client, messages_to_summarize)
+    return [], new_summary       
+
+def write_history(sessions, summary):
+    data = {"summary": summary, "sessions": sessions}
+    with open(HISTORY_FILE, "w") as f:
+        json.dump(data, f, indent=2)

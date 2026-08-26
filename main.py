@@ -1,11 +1,13 @@
 import os
+from config import MAX_CHARS, MODEL
 from dotenv import load_dotenv
 from openai import OpenAI
 import argparse
 from prompts import system_prompt
 from call_function import available_functions
 from call_function import call_function
-from persistance import save_messages, load_and_prepare
+from persistance import save_messages, load_and_prepare, write_history, compact_if_needed, summarize
+
 
 load_dotenv()
 api_key = os.environ.get("OPENROUTER_API_KEY")
@@ -25,15 +27,25 @@ def main():
     args = parser.parse_args()
     working_dir = validate_working_dir(args.working_dir)
 
-    messages, old_sessions, session_start, summary = load_and_prepare(client)
+    messages, old_sessions, session_start, summary = load_and_prepare()
     session_start_index = len(messages)  
 
     while True:
         user_input = input("\nYou: ")
         if user_input.lower() in ["exit", "quit"]:
-            print(f"\nAi: Smell ya later!\n")
+            print("\nAi: Smell ya later!")
+            current_new = messages[session_start_index:]
+            final_sessions, final_summary = compact_if_needed(
+                client, old_sessions, current_new, session_start, summary
+            )
+            write_history(final_sessions, final_summary)
             break
-        messages.append({"role": "user", "content": user_input})
+
+        messages.append({"role": "user", "content": user_input})   
+
+        for x in range(20):
+            response = generate_content(client, messages, temperature=args.temperature)
+            ...
 
         for x in range(20):  # Limit to 20 iterations to prevent infinite loops
             response = generate_content(client, messages, temperature=args.temperature)
@@ -80,7 +92,7 @@ def validate_working_dir(path):
 
 def generate_content(client, messages, temperature=0.7):
     response = client.chat.completions.create(
-        model="openrouter/free",
+        model=MODEL,
         messages=messages,
         temperature=temperature,
         tools=available_functions
