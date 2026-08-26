@@ -33,7 +33,7 @@ def main():
     while True:
         user_input = input("\nYou: ")
         if user_input.lower() in ["exit", "quit"]:
-            print("\nAi: Smell ya later!")
+            print("\nAi: Smell ya later!\n")
             current_new = messages[session_start_index:]
             final_sessions, final_summary = compact_if_needed(
                 client, old_sessions, current_new, session_start, summary
@@ -57,7 +57,7 @@ def main():
                     print("Token usage information is not available in the response.")
 
             ai_message = response.choices[0].message
-            messages.append(ai_message)
+            messages.append(ai_message) # type: ignore
 
             if ai_message.tool_calls:
                 for tool_call in ai_message.tool_calls:
@@ -69,8 +69,8 @@ def main():
                         print(f"-> {result_message['content']}")
             else:
                 print(f"\nAi: {ai_message.content}")
-                break  # Exit the loop if no tool calls are present in the message
-            print("\n---\n")  # Print a separator between iterations
+                break  # exit the loop if no tool calls are present in the message
+            print("\n---\n")  # seperator
         else:
             print("Agent did not finish its response within 20 iterations. Please check for potential issues.")
 
