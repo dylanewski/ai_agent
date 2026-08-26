@@ -33,7 +33,7 @@ def main():
     while True:
         user_input = input("\nYou: ")
         if user_input.lower() in ["exit", "quit"]:
-            print("\nAi: Smell ya later!\n")
+            print("\nClosing session...\n")
             current_new = messages[session_start_index:]
             final_sessions, final_summary = compact_if_needed(
                 client, old_sessions, current_new, session_start, summary

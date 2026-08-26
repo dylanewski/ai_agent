@@ -1,0 +1,83 @@
+/* the whole page */
+body {
+    background-color: #1e1e1e;
+    color: #e0e0e0;
+    font-family: sans-serif;
+    display: flex;
+    justify-content: center;
+    margin: 0;
+    padding: 20px;
+}
+
+/* the main chat box: fixed width, sits in the center */
+#chat-container {
+    width: 100%;
+    max-width: 700px;
+    display: flex;
+    flex-direction: column;
+    height: 90vh;
+}
+
+/* the title */
+h1 {
+    text-align: center;
+    font-weight: normal;
+    color: #b088d0;
+}
+
+/* the message area: grows to fill space, scrolls when full */
+#messages {
+    flex-grow: 1;
+    overflow-y: auto;
+    border: 1px solid #333;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 10px;
+}
+
+/* the bottom row: input box + button side by side */
+#input-area {
+    display: flex;
+    gap: 10px;
+}
+
+/* the text input: takes up most of the row */
+#user-input {
+    flex-grow: 1;
+    padding: 12px;
+    border: 1px solid #333;
+    border-radius: 8px;
+    background-color: #2a2a2a;
+    color: #e0e0e0;
+    font-size: 16px;
+}
+
+/* the send button */
+#send-button {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    background-color: #b088d0;
+    color: #1e1e1e;
+    font-size: 16px;
+    cursor: pointer;
+}
+
+/* individual message bubbles  */
+.message {
+    margin-bottom: 12px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    line-height: 1.4;
+}
+
+/* user messages: aligned right, distinct color */
+.user-message {
+    background-color: #3a3a4a;
+    text-align: right;
+}
+
+/* agent messages: aligned left */
+.agent-message {
+    background-color: #2a2a2a;
+}
