@@ -72,4 +72,4 @@ static/ — CSS and JavaScript for the web interface
 ai_workspace/ — the default sandbox the agent operates in (git-ignored)
 Safety Notes
 
-This agent can execute arbitrary Python code within its working directory. It is intended for learning and personal use on simple tasks. Keep the working directory scoped to a project you're comfortable with, and don't point it at sensitive directories.se on simple tasks. Keep the working directory scoped to a project you're comfortable with, and don't point it at sensitive directories
+This agent can execute arbitrary Python code within its working directory. It is intended for learning and personal use on simple tasks. Keep the working directory scoped to a project you're comfortable with, and don't point it at sensitive directories

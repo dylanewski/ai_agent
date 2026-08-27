@@ -1,12 +1,12 @@
+import argparse
 import os
-from config import MAX_CHARS, MODEL
+
 from dotenv import load_dotenv
 from openai import OpenAI
-import argparse
-from prompts import system_prompt
-from call_function import available_functions
-from call_function import call_function
-from persistance import save_messages, load_and_prepare, write_history, compact_if_needed, summarize
+
+from agent import run_agent
+from persistence import save_messages, load_and_prepare, write_history, compact_if_needed
+from utils import validate_working_dir
 
 
 load_dotenv()
@@ -41,63 +41,15 @@ def main():
             write_history(final_sessions, final_summary)
             break
 
-        messages.append({"role": "user", "content": user_input})   
+        messages.append({"role": "user", "content": user_input})
 
-        for x in range(20):
-            response = generate_content(client, messages, temperature=args.temperature)
-            ...
+        reply = run_agent(client, messages, working_dir, temperature=args.temperature, verbose=args.verbose)
+        print(f"\nAi: {reply}")
 
-        for x in range(20):  # Limit to 20 iterations to prevent infinite loops
-            response = generate_content(client, messages, temperature=args.temperature)
-            if args.verbose:
-                if response.usage is not None:
-                    print(f"Prompt tokens: {response.usage.prompt_tokens}")
-                    print(f"Response tokens: {response.usage.completion_tokens}")
-                else:
-                    print("Token usage information is not available in the response.")
-
-            ai_message = response.choices[0].message
-            messages.append(ai_message) # type: ignore
-
-            if ai_message.tool_calls:
-                for tool_call in ai_message.tool_calls:
-                    result_message = call_function(tool_call, verbose=args.verbose, working_directory=working_dir)
-                    if result_message['content'] == "":
-                        result_message['content'] = "(the function returned no output)"
-                    messages.append(result_message) 
-                    if args.verbose:
-                        print(f"-> {result_message['content']}")
-            else:
-                print(f"\nAi: {ai_message.content}")
-                break  # exit the loop if no tool calls are present in the message
-            print("\n---\n")  # seperator
-        else:
-            print("Agent did not finish its response within 20 iterations. Please check for potential issues.")
-
-        current_new = messages[session_start_index:]  # Get only the new messages from this session
-        save_messages(old_sessions,current_new, session_start, summary)  
+        current_new = messages[session_start_index:]
+        save_messages(old_sessions, current_new, session_start, summary)
             
 
-def validate_working_dir(path):
-    resolved = os.path.abspath(path)          # resolve to true absolute path
-    home = os.path.expanduser("~")
-    forbidden = [os.path.abspath(os.sep), home]   # filesystem root and home dir
-
-    if resolved in forbidden:
-        print(f"Error: '{path}' resolves to a forbidden directory ({resolved}). Refusing to run.")
-        exit(1)
-
-    os.makedirs(resolved, exist_ok=True)      # create the workspace if it doesn't exist
-    return resolved
-
-def generate_content(client, messages, temperature=0.7):
-    response = client.chat.completions.create(
-        model=MODEL,
-        messages=messages,
-        temperature=temperature,
-        tools=available_functions
-    )
-    return response
 
 if __name__ == "__main__":
     main()

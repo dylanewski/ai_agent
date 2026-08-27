@@ -1,6 +1,7 @@
 import json
-from config import MAX_CHARS, MODEL
 from datetime import datetime
+
+from config import MODEL
 from prompts import system_prompt
 
 HISTORY_FILE = "conversation_history.json"
