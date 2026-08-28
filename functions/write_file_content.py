@@ -1,7 +1,7 @@
 import os
 from config import MAX_CHARS
 
-def write_file(working_directory: str, file_path: str, content: str) -> str:
+def write_file_content(working_directory: str, file_path: str, content: str) -> str:
     absolute_path = os.path.abspath(working_directory)
     full_file_path = os.path.join(absolute_path, file_path)
     normalized_path = os.path.normpath(full_file_path)

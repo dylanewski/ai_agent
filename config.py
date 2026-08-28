@@ -1,4 +1,5 @@
 
 MAX_CHARS = 10000
+WEB_MAX_CHARS = 5000
 MODEL = "openai/gpt-4o-mini"
 COMPACT_THRESHOLD = 50
