@@ -1,11 +1,10 @@
 import json
 from datetime import datetime
 
-from config import MODEL
+from config import MODEL, COMPACT_THRESHOLD
 from prompts import system_prompt
 
 HISTORY_FILE = "conversation_history.json"
-COMPACT_THRESHOLD = 50
 
 def trim_messages(messages):
     serializable = []

@@ -31,3 +31,13 @@ userInput.addEventListener("keydown", function (event) {
         sendMessage();
     }
 });
+
+async function loadHistory() {
+    const response = await fetch("/history");
+    const data = await response.json();
+    for (const msg of data.messages) {
+        addMessage(msg.text, msg.sender);
+    }
+}
+
+loadHistory();

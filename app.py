@@ -1,13 +1,16 @@
 import os
-
-from dotenv import load_dotenv
 from flask import Flask, render_template, request, jsonify
+from dotenv import load_dotenv
 from openai import OpenAI
-
+from config import COMPACT_THRESHOLD
 from agent import run_agent
-from persistence import load_and_prepare, save_messages
 from utils import validate_working_dir
-
+from persistence import (
+    load_and_prepare,
+    save_messages,
+    write_history,
+    compact_if_needed,
+)
 
 load_dotenv()
 api_key = os.environ.get("OPENROUTER_API_KEY")
@@ -18,9 +21,8 @@ client = OpenAI(base_url="https://openrouter.ai/api/v1", api_key=api_key)
 
 app = Flask(__name__)
 
+# set up the working directory once, at startup (this doesn't change per request)
 working_dir = validate_working_dir("./ai_workspace")
-messages, old_sessions, session_start, summary = load_and_prepare()
-session_start_index = len(messages)
 
 
 @app.route("/")
@@ -28,20 +30,42 @@ def index():
     return render_template("index.html")
 
 
+@app.route("/history")
+def history():
+    messages, _old, _start, _summary = load_and_prepare()
+
+    clean = []
+    for m in messages:
+        role = m["role"] if isinstance(m, dict) else m.role
+        content = m["content"] if isinstance(m, dict) else m.content
+        if role == "user" and content:
+            clean.append({"text": content, "sender": "user"})
+        elif role == "assistant" and content:
+            clean.append({"text": content, "sender": "agent"})
+
+    return jsonify({"messages": clean})
+
+
 @app.route("/chat", methods=["POST"])
 def chat():
-    data = request.get_json()
-    user_message = data["message"]
+    user_message = request.get_json()["message"]
 
+    # 1. LOAD the conversation fresh from the file
+    messages, old_sessions, session_start, summary = load_and_prepare()
+    session_start_index = len(messages)
+
+    # 2. handle this one message
     messages.append({"role": "user", "content": user_message})
-
     reply = run_agent(client, messages, working_dir)
 
     current_new = messages[session_start_index:]
-    save_messages(old_sessions, current_new, session_start, summary)
+    final_sessions, final_summary = compact_if_needed(
+        client, old_sessions, current_new, session_start, summary
+    )
+    write_history(final_sessions, final_summary)
 
     return jsonify({"reply": reply})
 
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5001)
+    app.run(debug=True, port=5001, exclude_patterns=["*/ai_workspace/*"])
