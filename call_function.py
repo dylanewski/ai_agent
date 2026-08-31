@@ -6,6 +6,7 @@ from functions.get_file_content import get_file_content, schema_get_file_content
 from functions.run_python_file import run_python_file, schema_run_python_file
 from functions.write_file_content import schema_write_file_content, write_file_content
 from functions.fetch_url import schema_fetch_url, fetch_url
+from functions.web_search import schema_web_search, web_search
 
 
 available_functions = [
@@ -13,7 +14,8 @@ available_functions = [
     schema_get_file_content,
     schema_run_python_file,
     schema_write_file_content,
-    schema_fetch_url
+    schema_fetch_url,
+    schema_web_search
 ]
 
 
@@ -35,7 +37,8 @@ def call_function(tool_call, verbose: bool = False, working_directory: str = "./
     "get_files_info": get_files_info,
     "run_python_file": run_python_file,
     "write_file_content": write_file_content,
-    "fetch_url": fetch_url
+    "fetch_url": fetch_url,
+    "web_search": web_search
 }
     if function_name in function_map:
         result = function_map[function_name](**function_args)
