@@ -1,8 +1,9 @@
 import os
+import requests
 from flask import Flask, render_template, request, jsonify
 from dotenv import load_dotenv
 from openai import OpenAI
-from config import COMPACT_THRESHOLD
+from config import COMPACT_THRESHOLD, MODEL_BACKEND
 from agent import run_agent
 from utils import validate_working_dir
 from persistence import (
@@ -13,11 +14,28 @@ from persistence import (
 )
 
 load_dotenv()
-api_key = os.environ.get("OPENROUTER_API_KEY")
-if api_key is None:
-    raise RuntimeError("OPENROUTER_API_KEY is not set in the environment variables.")
 
-client = OpenAI(base_url="https://openrouter.ai/api/v1", api_key=api_key)
+
+def make_client():
+    if MODEL_BACKEND == "ollama":
+    
+        try:
+            requests.get("http://localhost:11434", timeout=2)
+        except requests.exceptions.RequestException:
+            raise RuntimeError(
+                "Ollama backend selected but the server isn't reachable at "
+                "localhost:11434. Make sure Ollama is running and you've pulled "
+                "the model ('ollama pull llama3.2')."
+            )
+        return OpenAI(base_url="http://localhost:11434/v1", api_key="ollama")
+    else:  # openrouter
+        api_key = os.environ.get("OPENROUTER_API_KEY")
+        if api_key is None:
+            raise RuntimeError("OPENROUTER_API_KEY is not set in the environment variables.")
+        return OpenAI(base_url="https://openrouter.ai/api/v1", api_key=api_key)
+
+
+client = make_client()
 
 app = Flask(__name__)
 
