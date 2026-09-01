@@ -113,11 +113,30 @@ userInput.addEventListener("keydown", function (event) {
 
 const imageInput = document.getElementById("image-input");
 const uploadButton = document.getElementById("upload-button");
+const imagePreview = document.getElementById("image-preview");
+const imagePreviewImg = document.getElementById("image-preview-img");
+const imagePreviewName = document.getElementById("image-preview-name");
 
 
 uploadButton.addEventListener("click", function () {
     imageInput.click();
 });
+
+
+function showImagePreview(file) {
+    imagePreviewImg.src = URL.createObjectURL(file);
+    imagePreviewName.textContent = file.name;
+    imagePreview.hidden = false;
+}
+
+
+function hideImagePreview() {
+    imagePreview.hidden = true;
+    if (imagePreviewImg.src) {
+        URL.revokeObjectURL(imagePreviewImg.src);
+        imagePreviewImg.src = "";
+    }
+}
 
 
 imageInput.addEventListener("change", async function () {
@@ -130,6 +149,7 @@ imageInput.addEventListener("change", async function () {
     sendButton.disabled = true;
     uploadButton.disabled = true;
 
+    showImagePreview(file);
 
     const question = userInput.value.trim();
     userInput.value = "";
@@ -155,6 +175,7 @@ imageInput.addEventListener("change", async function () {
 
         // 2. show the uploaded image in the chat (as the user's message)
         removeThinking();
+        hideImagePreview();
         addMessage("IMAGE: " + imageUrl, "user");
         showThinking();
 
@@ -175,6 +196,7 @@ imageInput.addEventListener("change", async function () {
 
     } catch (error) {
         removeThinking();
+        hideImagePreview();
         addMessage("Something went wrong with the image. Please try again.", "agent");
         console.error("image upload error:", error);
     } finally {
@@ -182,7 +204,7 @@ imageInput.addEventListener("change", async function () {
         userInput.disabled = false;
         sendButton.disabled = false;
         uploadButton.disabled = false;
-        imageInput.value = "";       
+        imageInput.value = "";
         userInput.focus();
     }
 });
