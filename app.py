@@ -1,11 +1,14 @@
 import os
+import uuid
 import requests
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, send_from_directory
+from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
 from openai import OpenAI
 from config import COMPACT_THRESHOLD, MODEL_BACKEND
 from agent import run_agent
 from utils import validate_working_dir
+from functions.analyze_image import analyze_image
 from persistence import (
     load_and_prepare,
     save_messages,
@@ -18,7 +21,6 @@ load_dotenv()
 
 def make_client():
     if MODEL_BACKEND == "ollama":
-    
         try:
             requests.get("http://localhost:11434", timeout=2)
         except requests.exceptions.RequestException:
@@ -41,6 +43,10 @@ app = Flask(__name__)
 
 # set up the working directory once, at startup (this doesn't change per request)
 working_dir = validate_working_dir("./ai_workspace")
+
+# folder for uploaded images
+UPLOAD_FOLDER = "uploaded_images"
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 
 @app.route("/")
@@ -84,6 +90,45 @@ def chat():
 
     return jsonify({"reply": reply})
 
+
+@app.route("/upload", methods=["POST"])
+def upload_image():
+    if "image" not in request.files:
+        return jsonify({"error": "no image provided"}), 400
+
+    file = request.files["image"]
+    if file.filename == "":
+        return jsonify({"error": "no file selected"}), 400
+
+    # extension check
+    ext = os.path.splitext(secure_filename(file.filename))[1].lower() # type: ignore
+    if ext not in [".png", ".jpg", ".jpeg", ".gif", ".webp"]:
+        return jsonify({"error": "unsupported file type"}), 400
+
+    # gen filename 
+    filename = f"{uuid.uuid4().hex}{ext}"
+    file.save(os.path.join(UPLOAD_FOLDER, filename))
+
+    # return the URL the frontend can use to display it
+    return jsonify({"url": f"/uploaded_images/{filename}"})
+
+
+@app.route("/uploaded_images/<filename>")
+def serve_uploaded_image(filename):
+    return send_from_directory(UPLOAD_FOLDER, filename)
+
+
+@app.route("/analyze", methods=["POST"])
+def analyze():
+    data = request.get_json()
+    image_url = data["image_url"]        
+    question = data.get("question") or "Describe this image in detail."
+
+    # convert the URL to the local file path so analyze_image can read it
+    local_path = image_url.lstrip("/")
+
+    reply = analyze_image(local_path, question)
+    return jsonify({"reply": reply})
 
 if __name__ == "__main__":
     app.run(debug=True, port=5001, exclude_patterns=["*/ai_workspace/*"])

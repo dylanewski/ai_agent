@@ -110,5 +110,83 @@ userInput.addEventListener("keydown", function (event) {
     }
 });
 
+
+const imageInput = document.getElementById("image-input");
+const uploadButton = document.getElementById("upload-button");
+
+
+uploadButton.addEventListener("click", function () {
+    imageInput.click();
+});
+
+
+imageInput.addEventListener("change", async function () {
+    const file = imageInput.files[0];
+    if (!file) { return; }
+
+    if (isSending) { return; }
+    isSending = true;
+    userInput.disabled = true;
+    sendButton.disabled = true;
+    uploadButton.disabled = true;
+
+
+    const question = userInput.value.trim();
+    userInput.value = "";
+
+    showThinking();
+
+    try {
+        // 1. upload the image file to the server
+        const formData = new FormData();
+        formData.append("image", file);
+
+        const uploadResponse = await fetch("/upload", {
+            method: "POST",
+            body: formData,       
+        });
+
+        if (!uploadResponse.ok) {
+            throw new Error("Upload failed: " + uploadResponse.status);
+        }
+
+        const uploadData = await uploadResponse.json();
+        const imageUrl = uploadData.url;
+
+        // 2. show the uploaded image in the chat (as the user's message)
+        removeThinking();
+        addMessage("IMAGE: " + imageUrl, "user");
+        showThinking();
+
+        // 3. Analayze image with the question (if any) and get the agent's response
+        const analyzeResponse = await fetch("/analyze", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ image_url: imageUrl, question: question }),
+        });
+
+        if (!analyzeResponse.ok) {
+            throw new Error("Analysis failed: " + analyzeResponse.status);
+        }
+
+        const analyzeData = await analyzeResponse.json();
+        removeThinking();
+        addMessage(analyzeData.reply, "agent");
+
+    } catch (error) {
+        removeThinking();
+        addMessage("Something went wrong with the image. Please try again.", "agent");
+        console.error("image upload error:", error);
+    } finally {
+        isSending = false;
+        userInput.disabled = false;
+        sendButton.disabled = false;
+        uploadButton.disabled = false;
+        imageInput.value = "";       
+        userInput.focus();
+    }
+});
+
 loadHistory();
 userInput.focus();
+

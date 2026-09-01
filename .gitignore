@@ -16,3 +16,6 @@ ai_workspace/
 
 # History
 conversation_history.json
+
+# Photos
+uploaded_images/
