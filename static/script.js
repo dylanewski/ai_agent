@@ -2,6 +2,8 @@ const messagesDiv = document.getElementById("messages");
 const userInput = document.getElementById("user-input");
 const sendButton = document.getElementById("send-button");
 
+let isSending = false;
+
 
 function addMessage(text, sender) {
     const bubble = document.createElement("div");
@@ -44,8 +46,14 @@ function removeThinking() {
 
 
 async function sendMessage() {
-    const text = userInput.value;
+    if (isSending) { return; }
+
+    const text = userInput.value.trim();
     if (text === "") { return; }
+
+    isSending = true;
+    userInput.disabled = true;
+    sendButton.disabled = true;
 
     addMessage(text, "user");
     userInput.value = "";
@@ -71,6 +79,11 @@ async function sendMessage() {
         removeThinking();
         addMessage("Something went wrong reaching the agent. Please try again.", "agent");
         console.error("sendMessage error:", error);
+    } finally {
+        isSending = false;
+        userInput.disabled = false;
+        sendButton.disabled = false;
+        userInput.focus();
     }
 }
 
@@ -92,8 +105,10 @@ sendButton.addEventListener("click", sendMessage);
 
 userInput.addEventListener("keydown", function (event) {
     if (event.key === "Enter") {
+        event.preventDefault();
         sendMessage();
     }
 });
 
 loadHistory();
+userInput.focus();
