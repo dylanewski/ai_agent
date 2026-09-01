@@ -1,13 +1,29 @@
 import os
+import time
 from config import SEARCH_PROVIDER, SEARCH_MAX_RESULTS
-from tavily import TavilyClient
+
+_CACHE = {}
+_CACHE_TTL = 300  # seconds a cached search stays valid (5 minutes)
 
 
 def web_search(query: str) -> str:
+    if query in _CACHE:
+        result_text, searched_at = _CACHE[query]
+        if time.time() - searched_at < _CACHE_TTL:
+            print(f"(search cache hit for '{query}')")
+            return result_text
+
+    # dispatch to whichever provider is configured
     if SEARCH_PROVIDER == "tavily":
-        return _search_tavily(query)
+        result = _search_tavily(query)
     else:
         return f'Error: Unknown search provider "{SEARCH_PROVIDER}"'
+
+   
+    if not result.startswith("Error:"):
+        _CACHE[query] = (result, time.time())
+
+    return result
 
 
 def _search_tavily(query: str) -> str:
