@@ -1,20 +1,29 @@
-// grab the elements we need from the page
 const messagesDiv = document.getElementById("messages");
 const userInput = document.getElementById("user-input");
 const sendButton = document.getElementById("send-button");
 
 
-// add one message bubble to the page
 function addMessage(text, sender) {
     const bubble = document.createElement("div");
     bubble.className = "message " + sender + "-message";
-    bubble.textContent = text;
+
+    if (typeof text === "string" && text.startsWith("IMAGE: ")) {
+        const url = text.slice(7);
+        const img = document.createElement("img");
+        img.src = url;
+        img.alt = "generated image";
+        img.style.maxWidth = "100%";
+        img.style.borderRadius = "8px";
+        bubble.appendChild(img);
+    } else {
+        bubble.textContent = text;
+    }
+
     messagesDiv.appendChild(bubble);
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
 }
 
 
-// show the pulsing "thinking" dots while the agent works
 function showThinking() {
     const bubble = document.createElement("div");
     bubble.className = "message agent-message thinking";
@@ -26,7 +35,6 @@ function showThinking() {
 }
 
 
-// remove the thinking dots once we have a reply (or an error)
 function removeThinking() {
     const bubble = document.getElementById("thinking-indicator");
     if (bubble) {
@@ -35,7 +43,6 @@ function removeThinking() {
 }
 
 
-// send the user's message, show the reply (with thinking indicator + error handling)
 async function sendMessage() {
     const text = userInput.value;
     if (text === "") { return; }
@@ -68,7 +75,6 @@ async function sendMessage() {
 }
 
 
-// load and render the existing conversation when the page opens
 async function loadHistory() {
     try {
         const response = await fetch("/history");
@@ -82,7 +88,6 @@ async function loadHistory() {
 }
 
 
-// wire up the events
 sendButton.addEventListener("click", sendMessage);
 
 userInput.addEventListener("keydown", function (event) {
@@ -91,5 +96,4 @@ userInput.addEventListener("keydown", function (event) {
     }
 });
 
-// run once on page load to show past conversation
 loadHistory();
