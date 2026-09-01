@@ -8,6 +8,7 @@ from functions.write_file_content import schema_write_file_content, write_file_c
 from functions.fetch_url import schema_fetch_url, fetch_url
 from functions.web_search import schema_web_search, web_search
 from functions.generate_image import schema_generate_image, generate_image
+from functions.analyze_image import schema_analyze_image, analyze_image
 
 
 
@@ -18,7 +19,8 @@ available_functions = [
     schema_write_file_content,
     schema_fetch_url,
     schema_web_search,
-    schema_generate_image
+    schema_generate_image,
+    schema_analyze_image
 ]
 
 
@@ -42,7 +44,8 @@ def call_function(tool_call, verbose: bool = False, working_directory: str = "./
     "write_file_content": write_file_content,
     "fetch_url": fetch_url,
     "web_search": web_search,
-    "generate_image": generate_image
+    "generate_image": generate_image,
+    "analyze_image": analyze_image
 }
     if function_name in function_map:
         result = function_map[function_name](**function_args)

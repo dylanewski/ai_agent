@@ -3,7 +3,7 @@ WEB_MAX_CHARS = 5000
 
 # ---- model backend ----
 MODEL_BACKEND = "openrouter"
-MODEL = "gemini-3.5-flash"
+MODEL = "google/gemini-3.7-flash"
 IMAGE_PROVIDER = "pollinations"
 
 
