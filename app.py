@@ -118,9 +118,9 @@ def analyze():
     question = data.get("question", "").strip()
 
     if question:
-        prompt = question + " Answer conversationally and concisely."
+        prompt = question + " Respond in plain text only — no markdown, asterisks, bullets, or headers."
     else:
-        prompt = "React briefly and casually to this image in a sentence or two."
+        prompt = "React briefly and casually to this image in a sentence or two, plain text only — no markdown or bullet points."
 
     local_path = image_url.lstrip("/")
     reply = analyze_image(local_path, prompt)
@@ -130,8 +130,9 @@ def analyze():
     session_start_index = len(messages)
 
     # user message: image + any typed text (matches the frontend display format)
-    user_content = f"IMAGE: {image_url}" + (f"\n{question}" if question else "")
-    messages.append({"role": "user", "content": user_content})
+    messages.append({"role": "user", "content": f"IMAGE: {image_url}"})
+    if question:
+        messages.append({"role": "user", "content": question})
     messages.append({"role": "assistant", "content": reply})
 
     current_new = messages[session_start_index:]

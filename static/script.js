@@ -11,34 +11,21 @@ function addMessage(text, sender) {
     bubble.className = "message " + sender + "-message";
 
     if (typeof text === "string" && text.startsWith("IMAGE: ")) {
-        const newlineIndex = text.indexOf("\n");
-        const url = newlineIndex === -1 ? text.slice(7) : text.slice(7, newlineIndex);
-        const note = newlineIndex === -1 ? "" : text.slice(newlineIndex + 1).trim();
-
+        const url = text.slice(7).trim();
         const img = document.createElement("img");
         img.src = url;
         img.alt = "image";
         img.style.maxWidth = "100%";
         img.style.borderRadius = "8px";
         bubble.appendChild(img);
-
-        if (note) {
-            const noteEl = document.createElement("div");
-            noteEl.textContent = note;
-            noteEl.style.marginTop = "6px";
-            bubble.appendChild(noteEl);
-        }
     } else {
-        // render markdown for agent messages /plain text for user messages
-        if (sender === "agent") {
-            bubble.innerHTML = marked.parse(text);
-        } else {
-            bubble.textContent = text;
-        }
+        bubble.textContent = text;
     }
+
     messagesDiv.appendChild(bubble);
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
 }
+
 
 
 function showThinking() {
@@ -97,7 +84,10 @@ async function sendMessage() {
             removeThinking();
             clearStaged();
             const bubbleContent = text ? "IMAGE: " + imageUrl + "\n" + text : "IMAGE: " + imageUrl;
-            addMessage(bubbleContent, "user");
+            addMessage("IMAGE: " + imageUrl, "user");  
+            if (text) {
+                addMessage(text, "user");                
+            }
             showThinking();
 
             const analyzeResponse = await fetch("/analyze", {
