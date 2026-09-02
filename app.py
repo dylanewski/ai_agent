@@ -100,17 +100,23 @@ def upload_image():
     if file.filename == "":
         return jsonify({"error": "no file selected"}), 400
 
-    # extension check
     ext = os.path.splitext(secure_filename(file.filename))[1].lower() # type: ignore
     if ext not in [".png", ".jpg", ".jpeg", ".gif", ".webp"]:
         return jsonify({"error": "unsupported file type"}), 400
 
-    # gen filename 
     filename = f"{uuid.uuid4().hex}{ext}"
     file.save(os.path.join(UPLOAD_FOLDER, filename))
 
-    # return the URL the frontend can use to display it
-    return jsonify({"url": f"/uploaded_images/{filename}"})
+    image_url = f"/uploaded_images/{filename}"
+
+    # record the image to history so it persists and re-displays on reload
+    messages, old_sessions, session_start, summary = load_and_prepare()
+    session_start_index = len(messages)
+    messages.append({"role": "user", "content": f"IMAGE: {image_url}"})
+    current_new = messages[session_start_index:]
+    save_messages(old_sessions, current_new, session_start, summary)
+
+    return jsonify({"url": image_url})
 
 
 @app.route("/uploaded_images/<filename>")

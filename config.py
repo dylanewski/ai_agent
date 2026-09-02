@@ -7,6 +7,6 @@ MODEL = "google/gemini-3.7-flash"
 IMAGE_PROVIDER = "pollinations"
 
 
-COMPACT_THRESHOLD = 50
+COMPACT_THRESHOLD = 100
 SEARCH_PROVIDER = "tavily"
 SEARCH_MAX_RESULTS = 5

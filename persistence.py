@@ -1,5 +1,6 @@
 import json
 from datetime import datetime
+import os
 
 from config import MODEL, COMPACT_THRESHOLD
 from prompts import system_prompt
@@ -61,7 +62,7 @@ def summarize(client, messages_to_summarize):
         if content:                          
             conversation_text += f"{role}: {content}\n"
 
-        summary_prompt = """You are summarizing a conversation between a user and an AI coding agent. Produce a concise summary (a few short paragraphs at most) that preserves:
+    summary_prompt = """You are summarizing a conversation between a user and an AI coding agent. Produce a concise summary (a few short paragraphs at most) that preserves:
 - Facts the user shared (preferences, personal details, decisions)
 - Tasks that were accomplished (files created, code written, actions taken)
 - Any ongoing or unfinished work
@@ -86,7 +87,7 @@ def compact_if_needed(client, old_sessions, current_new, session_start, summary)
 
     total = sum(len(s["messages"]) for s in all_sessions)
     if total <= COMPACT_THRESHOLD:
-        return all_sessions, summary     
+        return all_sessions, summary
 
     print(f"(Compacting {total} messages into a summary...)")
     messages_to_summarize = []
@@ -96,9 +97,28 @@ def compact_if_needed(client, old_sessions, current_new, session_start, summary)
         messages_to_summarize.extend(s["messages"])
 
     new_summary = summarize(client, messages_to_summarize)
-    return [], new_summary       
+
+    # these sessions are about to be discarded — delete their uploaded images
+    _delete_referenced_images(all_sessions)
+
+    return [], new_summary    
 
 def write_history(sessions, summary):
     data = {"summary": summary, "sessions": sessions}
     with open(HISTORY_FILE, "w") as f:
         json.dump(data, f, indent=2)
+
+def _delete_referenced_images(sessions):
+    """Delete uploaded image files referenced by messages being compacted away."""
+    for session in sessions:
+        for m in session.get("messages", []):
+            content = m.get("content", "") if isinstance(m, dict) else ""
+            if isinstance(content, str) and content.startswith("IMAGE: /uploaded_images/"):
+                url = content[len("IMAGE: "):]
+                local_path = url.lstrip("/")
+                try:
+                    if os.path.exists(local_path):
+                        os.remove(local_path)
+                        print(f"(deleted compacted image: {local_path})")
+                except Exception as e:
+                    print(f"(could not delete {local_path}: {e})")
