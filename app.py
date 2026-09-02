@@ -41,7 +41,7 @@ client = make_client()
 
 app = Flask(__name__)
 
-# set up the working directory once, at startup (this doesn't change per request)
+# set up the working directory
 working_dir = validate_working_dir("./ai_workspace")
 
 # folder for uploaded images
@@ -127,13 +127,16 @@ def serve_uploaded_image(filename):
 @app.route("/analyze", methods=["POST"])
 def analyze():
     data = request.get_json()
-    image_url = data["image_url"]        
-    question = data.get("question") or "Describe this image in detail."
+    image_url = data["image_url"]
+    question = data.get("question", "").strip()
 
-    # convert the URL to the local file path so analyze_image can read it
+    if question:
+        prompt = question
+    else:
+        prompt = "Give a brief, casual one-line reaction to this image. Just a quick friendly note, not a detailed description."
+
     local_path = image_url.lstrip("/")
-
-    reply = analyze_image(local_path, question)
+    reply = analyze_image(local_path, prompt)
     return jsonify({"reply": reply})
 
 if __name__ == "__main__":

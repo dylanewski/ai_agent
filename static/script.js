@@ -10,13 +10,23 @@ function addMessage(text, sender) {
     bubble.className = "message " + sender + "-message";
 
     if (typeof text === "string" && text.startsWith("IMAGE: ")) {
-        const url = text.slice(7);
+        const newlineIndex = text.indexOf("\n");
+        const url = newlineIndex === -1 ? text.slice(7) : text.slice(7, newlineIndex);
+        const note = newlineIndex === -1 ? "" : text.slice(newlineIndex + 1).trim();
+
         const img = document.createElement("img");
         img.src = url;
         img.alt = "generated image";
         img.style.maxWidth = "100%";
         img.style.borderRadius = "8px";
         bubble.appendChild(img);
+
+        if (note) {
+            const noteEl = document.createElement("div");
+            noteEl.textContent = note;
+            noteEl.style.marginTop = "6px";
+            bubble.appendChild(noteEl);
+        }
     } else {
         bubble.textContent = text;
     }

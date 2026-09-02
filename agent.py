@@ -19,17 +19,21 @@ def run_agent(client, messages, working_dir, temperature=0.7, verbose=False):
                 if result_message["content"] == "":
                     result_message["content"] = "(the function returned no output)"
 
-                # if a tool produced an image, return it directly —
+                # if a tool produced an image, return it directly with a short note —
                 # don't let the model rewrite the IMAGE: URL into prose
                 if result_message["content"].startswith("IMAGE:"):
-                    return result_message["content"]
+                    image_reply = result_message["content"] + "\nHere's what I generated."
+                    # record it as the assistant's message so it persists in history
+                    messages.append({"role": "assistant", "content": image_reply})
+                    return image_reply
 
                 messages.append(result_message)
                 if verbose:
                     print(f"-> {result_message['content']}")
         else:
             return ai_message.content
-        
+
+
 def generate_content(client, messages, temperature=0.7):
     response = client.chat.completions.create(
         model=MODEL,
