@@ -13,10 +13,15 @@ function addMessage(text, sender) {
     if (typeof text === "string" && text.startsWith("IMAGE: ")) {
         const url = text.slice(7).trim();
         const img = document.createElement("img");
-        img.src = url;
         img.alt = "image";
         img.style.maxWidth = "100%";
         img.style.borderRadius = "8px";
+        // images load asynchronously and grow the scroll height after the
+        // fact, so re-pin to bottom once each one finishes loading
+        img.addEventListener("load", function () {
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        });
+        img.src = url;
         bubble.appendChild(img);
     } else {
         bubble.textContent = text;
@@ -140,6 +145,7 @@ async function loadHistory() {
         for (const msg of data.messages) {
             addMessage(msg.text, msg.sender);
         }
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
     } catch (error) {
         console.error("loadHistory error:", error);
     }
@@ -197,20 +203,113 @@ imageInput.addEventListener("change", function () {
     imagePreview.hidden = false;
     userInput.focus();
 });
-// theme toggle
+// theme toggle (lives inside the settings popover)
 const themeToggle = document.getElementById("theme-toggle");
+
+function setThemeSwitch(isDark) {
+    themeToggle.setAttribute("aria-checked", isDark ? "true" : "false");
+}
 
 // apply saved theme on load (default: dark)
 if (localStorage.getItem("theme") === "light") {
     document.body.classList.add("light");
-    themeToggle.textContent = "☀️";
+    setThemeSwitch(false);
+} else {
+    setThemeSwitch(true);
 }
 
 themeToggle.addEventListener("click", function () {
     document.body.classList.toggle("light");
     const isLight = document.body.classList.contains("light");
-    themeToggle.textContent = isLight ? "☀️" : "🌙";
+    setThemeSwitch(!isLight);
     localStorage.setItem("theme", isLight ? "light" : "dark");
+});
+
+// settings popover
+const settingsButton = document.getElementById("settings-button");
+const settingsOverlay = document.getElementById("settings-overlay");
+const settingsClose = document.getElementById("settings-close");
+const modelInput = document.getElementById("model-input");
+const compactThresholdInput = document.getElementById("compact-threshold-input");
+const settingsStatus = document.getElementById("settings-status");
+
+let settingsStatusTimer = null;
+
+function showSettingsStatus(text) {
+    settingsStatus.textContent = text;
+    settingsStatus.classList.add("visible");
+    clearTimeout(settingsStatusTimer);
+    settingsStatusTimer = setTimeout(function () {
+        settingsStatus.classList.remove("visible");
+    }, 1500);
+}
+
+async function loadSettings() {
+    try {
+        const response = await fetch("/settings");
+        const data = await response.json();
+        modelInput.value = data.model || "";
+        compactThresholdInput.value = data.compact_threshold || "";
+    } catch (error) {
+        console.error("loadSettings error:", error);
+    }
+}
+
+async function saveSettings(payload) {
+    try {
+        const response = await fetch("/settings", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+        });
+        const data = await response.json();
+        if (!response.ok) {
+            showSettingsStatus(data.error || "Could not save settings");
+            return;
+        }
+        showSettingsStatus("Saved");
+    } catch (error) {
+        console.error("saveSettings error:", error);
+        showSettingsStatus("Could not save settings");
+    }
+}
+
+function openSettings() {
+    settingsOverlay.hidden = false;
+    loadSettings();
+}
+
+function closeSettings() {
+    settingsOverlay.hidden = true;
+}
+
+settingsButton.addEventListener("click", openSettings);
+settingsClose.addEventListener("click", closeSettings);
+
+settingsOverlay.addEventListener("click", function (event) {
+    if (event.target === settingsOverlay) {
+        closeSettings();
+    }
+});
+
+document.addEventListener("keydown", function (event) {
+    if (event.key === "Escape" && !settingsOverlay.hidden) {
+        closeSettings();
+    }
+});
+
+modelInput.addEventListener("change", function () {
+    const model = modelInput.value.trim();
+    if (model) {
+        saveSettings({ model: model });
+    }
+});
+
+compactThresholdInput.addEventListener("change", function () {
+    const value = parseInt(compactThresholdInput.value, 10);
+    if (!isNaN(value) && value > 0) {
+        saveSettings({ compact_threshold: value });
+    }
 });
 
 loadHistory();

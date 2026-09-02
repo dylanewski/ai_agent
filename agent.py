@@ -1,5 +1,5 @@
+import config
 from call_function import call_function, available_functions
-from config import MODEL
 
 
 def run_agent(client, messages, working_dir, temperature=0.7, verbose=False):
@@ -32,7 +32,7 @@ def run_agent(client, messages, working_dir, temperature=0.7, verbose=False):
 
 def generate_content(client, messages, temperature=0.7):
     response = client.chat.completions.create(
-        model=MODEL,
+        model=config.MODEL,
         messages=messages,
         temperature=temperature,
         tools=available_functions

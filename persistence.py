@@ -2,7 +2,7 @@ import json
 from datetime import datetime
 import os
 
-from config import MODEL, COMPACT_THRESHOLD
+import config
 from prompts import system_prompt
 
 HISTORY_FILE = "conversation_history.json"
@@ -72,7 +72,7 @@ Prioritize recent information: preserve details from later in the conversation m
 Drop the chatty back-and-forth. Focus on what would be useful to remember going forward."""
 
     response = client.chat.completions.create(
-        model= MODEL,
+        model=config.MODEL,
         messages=[
             {"role": "system", "content": summary_prompt},
             {"role": "user", "content": f"Summarize this conversation:\n\n{conversation_text}"},
@@ -86,7 +86,7 @@ def compact_if_needed(client, old_sessions, current_new, session_start, summary)
     all_sessions = old_sessions + [current_session]
 
     total = sum(len(s["messages"]) for s in all_sessions)
-    if total <= COMPACT_THRESHOLD:
+    if total <= config.COMPACT_THRESHOLD:
         return all_sessions, summary
 
     print(f"(Compacting {total} messages into a summary...)")

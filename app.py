@@ -5,7 +5,7 @@ from flask import Flask, render_template, request, jsonify, send_from_directory
 from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
 from openai import OpenAI
-from config import COMPACT_THRESHOLD, MODEL_BACKEND
+import config
 from agent import run_agent
 from utils import validate_working_dir
 from functions.analyze_image import analyze_image
@@ -20,7 +20,7 @@ load_dotenv()
 
 
 def make_client():
-    if MODEL_BACKEND == "ollama":
+    if config.MODEL_BACKEND == "ollama":
         try:
             requests.get("http://localhost:11434", timeout=2)
         except requests.exceptions.RequestException:
@@ -52,6 +52,43 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 @app.route("/")
 def index():
     return render_template("index.html")
+
+
+@app.route("/settings", methods=["GET"])
+def get_settings():
+    return jsonify({
+        "model": config.MODEL,
+        "compact_threshold": config.COMPACT_THRESHOLD,
+        "model_backend": config.MODEL_BACKEND,
+    })
+
+
+@app.route("/settings", methods=["POST"])
+def update_settings():
+    data = request.get_json() or {}
+
+    if "model" in data:
+        model = str(data["model"]).strip()
+        if not model:
+            return jsonify({"error": "model cannot be empty"}), 400
+        config.MODEL = model
+
+    if "compact_threshold" in data:
+        try:
+            threshold = int(data["compact_threshold"])
+        except (TypeError, ValueError):
+            return jsonify({"error": "compact_threshold must be an integer"}), 400
+        if threshold < 1:
+            return jsonify({"error": "compact_threshold must be at least 1"}), 400
+        config.COMPACT_THRESHOLD = threshold
+
+    config.save_overrides()
+
+    return jsonify({
+        "model": config.MODEL,
+        "compact_threshold": config.COMPACT_THRESHOLD,
+        "model_backend": config.MODEL_BACKEND,
+    })
 
 
 @app.route("/history")

@@ -2,14 +2,24 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>AI Agent</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
     <div id="chat-container">
-        <h1>AI Agent</h1>
         <div id="header">
-            <button id="theme-toggle" type="button" title="Toggle light/dark" aria-label="Toggle theme">🌙</button>
+            <div id="header-spacer"></div>
+            <h1>AI Agent</h1>
+            <button id="settings-button" type="button" title="Settings" aria-label="Open settings">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="3"></circle>
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                </svg>
+            </button>
         </div>
         <div id="messages"></div>
 
@@ -30,6 +40,55 @@
             </button>
             <input type="text" id="user-input" placeholder="Type a message...">
             <button id="send-button">Send</button>
+        </div>
+    </div>
+
+    <div id="settings-overlay" hidden>
+        <div id="settings-panel" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+            <div id="settings-header">
+                <h2 id="settings-title">Settings</h2>
+                <button id="settings-close" type="button" aria-label="Close settings">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="settings-row">
+                <div class="settings-label">
+                    <span>Dark mode</span>
+                    <span class="settings-hint">Switch between light and dark theme</span>
+                </div>
+                <button id="theme-toggle" type="button" class="switch" role="switch" aria-checked="true" aria-label="Toggle dark mode">
+                    <span class="switch-knob"></span>
+                </button>
+            </div>
+
+            <div class="settings-row settings-row-stacked">
+                <label class="settings-label" for="model-input">
+                    <span>AI model</span>
+                    <span class="settings-hint">OpenRouter model identifier</span>
+                </label>
+                <input list="model-suggestions" id="model-input" class="settings-input" type="text" autocomplete="off" spellcheck="false" placeholder="e.g. anthropic/claude-3.5-sonnet">
+                <datalist id="model-suggestions">
+                    <option value="google/gemini-2.0-flash-exp">
+                    <option value="anthropic/claude-3.5-sonnet">
+                    <option value="openai/gpt-4o-mini">
+                    <option value="meta-llama/llama-3.1-70b-instruct">
+                    <option value="deepseek/deepseek-chat">
+                </datalist>
+            </div>
+
+            <div class="settings-row settings-row-stacked">
+                <label class="settings-label" for="compact-threshold-input">
+                    <span>Compact threshold</span>
+                    <span class="settings-hint">Messages kept before history is summarized</span>
+                </label>
+                <input id="compact-threshold-input" class="settings-input" type="number" min="1" step="1" inputmode="numeric">
+            </div>
+
+            <div id="settings-status" aria-live="polite"></div>
         </div>
     </div>
 
