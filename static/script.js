@@ -3,6 +3,7 @@ const userInput = document.getElementById("user-input");
 const sendButton = document.getElementById("send-button");
 
 let isSending = false;
+let stagedFile = null;         
 
 
 function addMessage(text, sender) {
@@ -16,7 +17,7 @@ function addMessage(text, sender) {
 
         const img = document.createElement("img");
         img.src = url;
-        img.alt = "generated image";
+        img.alt = "image";
         img.style.maxWidth = "100%";
         img.style.borderRadius = "8px";
         bubble.appendChild(img);
@@ -28,9 +29,13 @@ function addMessage(text, sender) {
             bubble.appendChild(noteEl);
         }
     } else {
-        bubble.textContent = text;
+        // render markdown for agent messages /plain text for user messages
+        if (sender === "agent") {
+            bubble.innerHTML = marked.parse(text);
+        } else {
+            bubble.textContent = text;
+        }
     }
-
     messagesDiv.appendChild(bubble);
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
 }
@@ -55,44 +60,84 @@ function removeThinking() {
 }
 
 
+// unified send: handles text-only AND image+text
 async function sendMessage() {
     if (isSending) { return; }
 
     const text = userInput.value.trim();
-    if (text === "") { return; }
+
+    // check for either a message or a staged image to send anything
+    if (text === "" && !stagedFile) { return; }
 
     isSending = true;
     userInput.disabled = true;
     sendButton.disabled = true;
+    uploadButton.disabled = true;
 
-    addMessage(text, "user");
     userInput.value = "";
-
     showThinking();
 
     try {
-        const response = await fetch("/chat", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ message: text }),
-        });
+        if (stagedFile) {
+            // image path
+            const formData = new FormData();
+            formData.append("image", stagedFile);
 
-        if (!response.ok) {
-            throw new Error("Server error: " + response.status);
+            const uploadResponse = await fetch("/upload", {
+                method: "POST",
+                body: formData,
+            });
+            if (!uploadResponse.ok) {
+                throw new Error("Upload failed: " + uploadResponse.status);
+            }
+            const uploadData = await uploadResponse.json();
+            const imageUrl = uploadData.url;
+
+        
+            removeThinking();
+            clearStaged();
+            const bubbleContent = text ? "IMAGE: " + imageUrl + "\n" + text : "IMAGE: " + imageUrl;
+            addMessage(bubbleContent, "user");
+            showThinking();
+
+            const analyzeResponse = await fetch("/analyze", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ image_url: imageUrl, question: text }),
+            });
+            if (!analyzeResponse.ok) {
+                throw new Error("Analysis failed: " + analyzeResponse.status);
+            }
+            const analyzeData = await analyzeResponse.json();
+            removeThinking();
+            addMessage(analyzeData.reply, "agent");
+
+        } else {
+            // text-only path
+            addMessage(text, "user");
+
+            const response = await fetch("/chat", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ message: text }),
+            });
+            if (!response.ok) {
+                throw new Error("Server error: " + response.status);
+            }
+            const data = await response.json();
+            removeThinking();
+            addMessage(data.reply, "agent");
         }
-
-        const data = await response.json();
-        removeThinking();
-        addMessage(data.reply, "agent");
 
     } catch (error) {
         removeThinking();
-        addMessage("Something went wrong reaching the agent. Please try again.", "agent");
+        addMessage("Something went wrong. Please try again.", "agent");
         console.error("sendMessage error:", error);
     } finally {
         isSending = false;
         userInput.disabled = false;
         sendButton.disabled = false;
+        uploadButton.disabled = false;
         userInput.focus();
     }
 }
@@ -121,6 +166,7 @@ userInput.addEventListener("keydown", function (event) {
 });
 
 
+// image staging
 const imageInput = document.getElementById("image-input");
 const uploadButton = document.getElementById("upload-button");
 const imagePreview = document.getElementById("image-preview");
@@ -133,14 +179,9 @@ uploadButton.addEventListener("click", function () {
 });
 
 
-function showImagePreview(file) {
-    imagePreviewImg.src = URL.createObjectURL(file);
-    imagePreviewName.textContent = file.name;
-    imagePreview.hidden = false;
-}
-
-
-function hideImagePreview() {
+function clearStaged() {
+    stagedFile = null;
+    imageInput.value = "";
     imagePreview.hidden = true;
     if (imagePreviewImg.src) {
         URL.revokeObjectURL(imagePreviewImg.src);
@@ -149,75 +190,24 @@ function hideImagePreview() {
 }
 
 
-imageInput.addEventListener("change", async function () {
+imageInput.addEventListener("change", function () {
     const file = imageInput.files[0];
     if (!file) { return; }
+    stagedFile = file;
 
-    if (isSending) { return; }
-    isSending = true;
-    userInput.disabled = true;
-    sendButton.disabled = true;
-    uploadButton.disabled = true;
+    // loady spinner
+    const spinner = document.getElementById("image-preview-spinner");
+    if (spinner) spinner.style.display = "block";  
 
-    showImagePreview(file);
-
-    const question = userInput.value.trim();
-    userInput.value = "";
-
-    showThinking();
-
-    try {
-        // 1. upload the image file to the server
-        const formData = new FormData();
-        formData.append("image", file);
-
-        const uploadResponse = await fetch("/upload", {
-            method: "POST",
-            body: formData,       
-        });
-
-        if (!uploadResponse.ok) {
-            throw new Error("Upload failed: " + uploadResponse.status);
-        }
-
-        const uploadData = await uploadResponse.json();
-        const imageUrl = uploadData.url;
-
-        // 2. show the uploaded image in the chat (as the user's message)
-        removeThinking();
-        hideImagePreview();
-        addMessage("IMAGE: " + imageUrl, "user");
-        showThinking();
-
-        // 3. Analayze image with the question (if any) and get the agent's response
-        const analyzeResponse = await fetch("/analyze", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ image_url: imageUrl, question: question }),
-        });
-
-        if (!analyzeResponse.ok) {
-            throw new Error("Analysis failed: " + analyzeResponse.status);
-        }
-
-        const analyzeData = await analyzeResponse.json();
-        removeThinking();
-        addMessage(analyzeData.reply, "agent");
-
-    } catch (error) {
-        removeThinking();
-        hideImagePreview();
-        addMessage("Something went wrong with the image. Please try again.", "agent");
-        console.error("image upload error:", error);
-    } finally {
-        isSending = false;
-        userInput.disabled = false;
-        sendButton.disabled = false;
-        uploadButton.disabled = false;
-        imageInput.value = "";
-        userInput.focus();
-    }
+    imagePreviewImg.onload = function () {
+        if (spinner) spinner.style.display = "none"; 
+    };
+    imagePreviewImg.src = URL.createObjectURL(file);
+    imagePreviewName.textContent = file.name;
+    imagePreview.hidden = false;
+    userInput.focus();
 });
+
 
 loadHistory();
 userInput.focus();

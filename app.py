@@ -95,28 +95,15 @@ def chat():
 def upload_image():
     if "image" not in request.files:
         return jsonify({"error": "no image provided"}), 400
-
     file = request.files["image"]
     if file.filename == "":
         return jsonify({"error": "no file selected"}), 400
-
-    ext = os.path.splitext(secure_filename(file.filename))[1].lower() # type: ignore
+    ext = os.path.splitext(secure_filename(file.filename))[1].lower()  # type: ignore
     if ext not in [".png", ".jpg", ".jpeg", ".gif", ".webp"]:
         return jsonify({"error": "unsupported file type"}), 400
-
     filename = f"{uuid.uuid4().hex}{ext}"
     file.save(os.path.join(UPLOAD_FOLDER, filename))
-
-    image_url = f"/uploaded_images/{filename}"
-
-    # record the image to history so it persists and re-displays on reload
-    messages, old_sessions, session_start, summary = load_and_prepare()
-    session_start_index = len(messages)
-    messages.append({"role": "user", "content": f"IMAGE: {image_url}"})
-    current_new = messages[session_start_index:]
-    save_messages(old_sessions, current_new, session_start, summary)
-
-    return jsonify({"url": image_url})
+    return jsonify({"url": f"/uploaded_images/{filename}"})
 
 
 @app.route("/uploaded_images/<filename>")
@@ -131,12 +118,28 @@ def analyze():
     question = data.get("question", "").strip()
 
     if question:
-        prompt = question
+        prompt = question + " Answer conversationally and concisely."
     else:
-        prompt = "Give a brief, casual one-line reaction to this image. Just a quick friendly note, not a detailed description."
+        prompt = "React briefly and casually to this image in a sentence or two."
 
     local_path = image_url.lstrip("/")
     reply = analyze_image(local_path, prompt)
+
+    # save the full exchange to history so it persists on reload
+    messages, old_sessions, session_start, summary = load_and_prepare()
+    session_start_index = len(messages)
+
+    # user message: image + any typed text (matches the frontend display format)
+    user_content = f"IMAGE: {image_url}" + (f"\n{question}" if question else "")
+    messages.append({"role": "user", "content": user_content})
+    messages.append({"role": "assistant", "content": reply})
+
+    current_new = messages[session_start_index:]
+    final_sessions, final_summary = compact_if_needed(
+        client, old_sessions, current_new, session_start, summary
+    )
+    write_history(final_sessions, final_summary)
+
     return jsonify({"reply": reply})
 
 if __name__ == "__main__":
