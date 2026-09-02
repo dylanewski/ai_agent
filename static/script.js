@@ -197,7 +197,21 @@ imageInput.addEventListener("change", function () {
     imagePreview.hidden = false;
     userInput.focus();
 });
+// theme toggle
+const themeToggle = document.getElementById("theme-toggle");
 
+// apply saved theme on load (default: dark)
+if (localStorage.getItem("theme") === "light") {
+    document.body.classList.add("light");
+    themeToggle.textContent = "☀️";
+}
+
+themeToggle.addEventListener("click", function () {
+    document.body.classList.toggle("light");
+    const isLight = document.body.classList.contains("light");
+    themeToggle.textContent = isLight ? "☀️" : "🌙";
+    localStorage.setItem("theme", isLight ? "light" : "dark");
+});
 
 loadHistory();
 userInput.focus();

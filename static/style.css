@@ -9,6 +9,22 @@
     --accent-hover: #ff8145;
     --shadow: rgba(0, 0, 0, 0.35);
     --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Helvetica, Arial, sans-serif;
+    --bg-gradient-top: #16161b;
+    --focus-ring: rgba(255, 106, 43, 0.15);
+}
+
+body.light {
+    --bg: #f6f6f4;
+    --surface: #ffffff;
+    --surface-alt: #ececea;
+    --border: #dcdcd8;
+    --text: #1a1a1c;
+    --text-muted: #6a6a70;
+    --accent: #ff6a2b;
+    --accent-hover: #ff8145;
+    --shadow: rgba(0, 0, 0, 0.10);
+    --bg-gradient-top: #ffffff;
+    --focus-ring: rgba(255, 106, 43, 0.18);
 }
 
 * {
@@ -16,7 +32,7 @@
 }
 
 body {
-    background: radial-gradient(circle at top, #16161b, var(--bg) 60%);
+    background: radial-gradient(circle at top, var(--bg-gradient-top), var(--bg) 60%);
     color: var(--text);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
@@ -160,7 +176,7 @@ h1:hover {
 
 #input-area:focus-within {
     border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(255, 106, 43, 0.15), 0 8px 24px var(--shadow);
+    box-shadow: 0 0 0 3px var(--focus-ring), 0 8px 24px var(--shadow);
 }
 
 #upload-button {
@@ -235,7 +251,7 @@ h1:hover {
 
 #send-button:hover:not(:disabled) {
     background-color: var(--accent-hover);
-    box-shadow: 0 4px 14px rgba(255, 106, 43, 0.3);
+    box-shadow: 0 4px 14px var(--focus-ring);
 }
 
 #send-button:active:not(:disabled) {
@@ -334,4 +350,29 @@ h1:hover {
     .message {
         max-width: 90%;
     }
+}
+#header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    position: relative;
+}
+
+#theme-toggle {
+    background: transparent;
+    border: none;
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 8px;
+    transition: background-color 0.15s ease, transform 0.1s ease;
+}
+
+#theme-toggle:hover {
+    background-color: var(--surface-alt);
+}
+
+#theme-toggle:active {
+    transform: scale(0.9);
 }
